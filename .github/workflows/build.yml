@@ -29,6 +29,14 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Cache buildozer
+        uses: actions/cache@v4
+        with:
+          path: ~/.buildozer
+          key: buildozer-tictactower-${{ runner.os }}
+          restore-keys: |
+            buildozer-tictactower-${{ runner.os }}
+
       - name: Prepare signing key
         run: |
           mkdir -p keys
@@ -44,19 +52,25 @@ jobs:
 
       - name: Build (debug)
         if: env.BUILD_TYPE == 'debug'
-        uses: docker://kivy/buildozer:latest
-        env:
-          BUILDOZER_WARN_ON_ROOT: 0
-        with:
-          args: "android debug"
+        run: |
+          docker run --rm \
+            -e BUILDOZER_WARN_ON_ROOT=0 \
+            -e P4A_TARGET_API=35 \
+            -v "${GITHUB_WORKSPACE}":/github/workspace \
+            -v "${HOME}"/.buildozer:/home/user/.buildozer \
+            -w /github/workspace \
+            kivy/buildozer:latest android debug
 
       - name: Build (release)
         if: env.BUILD_TYPE == 'release'
-        uses: docker://kivy/buildozer:latest
-        env:
-          BUILDOZER_WARN_ON_ROOT: 0
-        with:
-          args: "android release"
+        run: |
+          docker run --rm \
+            -e BUILDOZER_WARN_ON_ROOT=0 \
+            -e P4A_TARGET_API=35 \
+            -v "${GITHUB_WORKSPACE}":/github/workspace \
+            -v "${HOME}"/.buildozer:/home/user/.buildozer \
+            -w /github/workspace \
+            kivy/buildozer:latest android release
 
       - name: Show fingerprint of new keystore
         if: env.NEW_KEYSTORE_CREATED == '1'
