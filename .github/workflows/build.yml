@@ -1,0 +1,86 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: Tipo de build (debug rapido / release firmado)
+        type: choice
+        default: debug
+        options:
+          - debug
+          - release
+
+env:
+  BUILD_TYPE: ${{ inputs.build_type || 'debug' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache buildozer
+        uses: actions/cache@v4
+        with:
+          path: ~/.buildozer
+          key: buildozer-tictactower-${{ runner.os }}
+          restore-keys: |
+            buildozer-tictactower-${{ runner.os }}
+
+      - name: Install buildozer
+        run: |
+          python -m pip install --upgrade pip
+          pip install buildozer cython virtualenv
+
+      - name: Prepare signing key
+        run: |
+          mkdir -p keys
+          if [[ "${BUILD_TYPE}" == "release" && -n "${{ secrets.ANDROID_KEYSTORE_B64 }}" ]]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > keys/tictactower.keystore
+          else
+            keytool -genkeypair -v -keystore keys/tictactower.keystore -alias tictactower \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass tictactower2026 -keypass tictactower2026 \
+              -dname "CN=Marcos Bordas Gonzalez, OU=Games, O=MarcosBordas, L=Havana, ST=La Habana, C=CU"
+            echo "NEW_KEYSTORE_CREATED=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build (debug)
+        if: env.BUILD_TYPE == 'debug'
+        run: buildozer -v android debug
+
+      - name: Build (release)
+        if: env.BUILD_TYPE == 'release'
+        run: buildozer -v android release
+
+      - name: Show fingerprint of new keystore
+        if: env.NEW_KEYSTORE_CREATED == '1'
+        run: |
+          keytool -list -v -keystore keys/tictactower.keystore \
+            -storepass tictactower2026 -alias tictactower \
+            | grep -A1 "SHA1\|SHA256" || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-tictactower-${{ env.BUILD_TYPE }}
+          path: |
+            bin/*.apk
+            bin/*.aab
+            keys/tictactower.keystore
+          if-no-files-found: warn

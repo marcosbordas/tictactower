@@ -1,0 +1,13 @@
+bin/
+.buildozer/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+keys/
+*.keystore
+*.log
+.kivy/
+Thumbs.db
+.DS_Store
