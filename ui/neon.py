@@ -28,6 +28,7 @@ class SolidBackground(Widget):
 
 
 class NeonButton(Widget):
+    __events__ = ('on_release',)
     text = StringProperty('')
     primary = BooleanProperty(False)
     small = BooleanProperty(False)
