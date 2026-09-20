@@ -45,12 +45,16 @@ jobs:
       - name: Build (debug)
         if: env.BUILD_TYPE == 'debug'
         uses: docker://kivy/buildozer:latest
+        env:
+          BUILDOZER_WARN_ON_ROOT: 0
         with:
           args: "android debug"
 
       - name: Build (release)
         if: env.BUILD_TYPE == 'release'
         uses: docker://kivy/buildozer:latest
+        env:
+          BUILDOZER_WARN_ON_ROOT: 0
         with:
           args: "android release"
 
